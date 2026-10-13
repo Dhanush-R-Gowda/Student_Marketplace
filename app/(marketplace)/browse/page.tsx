@@ -1,7 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
-import { ListingGrid } from "@/components/listing/ListingGrid";
 import { getAllCategories } from "@/lib/db/queries/categories";
 import { query } from "@/lib/db";
 import type { Listing } from "@/types";

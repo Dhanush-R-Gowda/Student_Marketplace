@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, AuthError } from "@/lib/auth/session";
-import { getAllReports, updateReportStatus } from "@/lib/db/queries/reports";
-import { UpdateReportStatusSchema } from "@/lib/validation/schemas";
+import { getAllReports } from "@/lib/db/queries/reports";
 
 export const dynamic = "force-dynamic";
 

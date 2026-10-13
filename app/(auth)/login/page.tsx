@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Metadata } from "next";
 
 // Client component — cannot export metadata here; handled in a separate
 // server-side metadata export via generateMetadata is not needed for auth pages.

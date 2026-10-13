@@ -16,7 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
   Dismissed:  "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
 };
 
-export function AdminReportsClient({ reports: initial, total, currentStatus }: { reports: Report[]; total: number; currentStatus: string }) {
+export function AdminReportsClient({ reports: initial, total: _total, currentStatus }: { reports: Report[]; total: number; currentStatus: string }) {
   const router = useRouter();
   const [reports, setReports] = useState(initial);
   const [loading, setLoading] = useState<Record<string, boolean>>({});

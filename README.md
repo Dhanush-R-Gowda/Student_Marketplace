@@ -102,52 +102,86 @@ See [`docs/er-diagram.md`](docs/er-diagram.md) for the ER diagram.
 ```bash
 git clone <repo-url>
 cd student-marketplace
-npm install
 ```
+
+Install dependencies using the lockfile exactly (requires npm 7+):
+
+```bash
+npm ci
+```
+
+> `npm ci` installs from `package-lock.json` without altering it. Use `npm install`
+> only if you intentionally want to update resolved versions.
 
 ### 2. Configure environment
 
 ```bash
+# macOS / Linux
 cp .env.example .env.local
+
+# Windows (PowerShell)
+Copy-Item .env.example .env.local
 ```
 
-Edit `.env.local`:
+Edit `.env.local` and fill in your values. The file already contains comments
+explaining each variable. At minimum you must set:
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/student_marketplace
-AUTH_SECRET=your_random_32_char_secret_here
-OPENAI_API_KEY=sk-...     # optional — semantic search only
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/student_marketplace
+AUTH_SECRET=<generate a random 32+ character string>
+```
+
+`OPENAI_API_KEY` is optional — the app falls back to keyword-only search when it
+is absent. `NEXT_PUBLIC_APP_URL` defaults to `http://localhost:3000`.
+
+Generate a secure `AUTH_SECRET`:
+
+```bash
+# Node.js (any platform)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# OpenSSL
+openssl rand -hex 32
 ```
 
 ### 3. Set up PostgreSQL
 
 ```bash
-# Create database
+# Create the database
 createdb student_marketplace
+```
 
-# Install pgvector (if not already installed)
-# macOS: brew install pgvector
-# Ubuntu: sudo apt install postgresql-15-pgvector
+Install the pgvector extension if it is not already present:
+
+```bash
+# macOS (Homebrew)
+brew install pgvector
+
+# Ubuntu / Debian
+sudo apt install postgresql-15-pgvector   # adjust version number as needed
+
+# Windows
+# See: https://github.com/pgvector/pgvector#windows
+# Pre-built binaries are available at the link above for PostgreSQL 14–17.
 ```
 
 ### 4. Run migrations
 
 ```bash
-npx tsx database/migrate.ts
+npm run db:migrate
 ```
 
 This runs all migrations in order:
 - `001_schema.sql` — tables, constraints, CHECK constraints
 - `002_indexes.sql` — all indexes including GIN and IVFFlat
-- `003_views.sql` — 4 database views
+- `003_views.sql` — 5 database views
 - `004_triggers.sql` — 7 triggers
 - `005_functions.sql` — `accept_offer()` stored function
 
 ### 5. Seed demo data
 
 ```bash
-npx tsx database/seed/seed.ts
+npm run db:seed
 ```
 
 Creates:

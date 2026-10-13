@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  User, Mail, GraduationCap, Building2, Calendar,
+  Mail, GraduationCap, Building2, Calendar,
   Package, ArrowLeftRight, Edit3, CheckCircle, XCircle,
   LogOut
 } from "lucide-react";
@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { StatusBadge, ConditionBadge } from "@/components/ui/Badge";
+import { StatusBadge } from "@/components/ui/Badge";
 import { formatDistanceToNow } from "date-fns";
 import type { User as UserType, Listing, Transaction } from "@/types";
 

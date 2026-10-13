@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
-import { SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button } from "@/components/ui/Button";

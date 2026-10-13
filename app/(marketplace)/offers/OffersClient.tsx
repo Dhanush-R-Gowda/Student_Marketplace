@@ -4,13 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Package, CheckCircle, XCircle, Clock, ArrowUpRight,
+  Package, CheckCircle, XCircle, Clock,
   MessageSquare, ChevronRight
 } from "lucide-react";
 import { OfferStatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import type { Offer } from "@/types";
 
 interface OffersClientProps {
@@ -21,7 +21,7 @@ interface OffersClientProps {
 
 type Tab = "received" | "sent";
 
-export function OffersClient({ sentOffers, receivedOffers, userId }: OffersClientProps) {
+export function OffersClient({ sentOffers, receivedOffers, userId: _userId }: OffersClientProps) {
   const router         = useRouter();
   const [tab, setTab]  = useState<Tab>("received");
   const [loading, setLoading] = useState<Record<string, boolean>>({});

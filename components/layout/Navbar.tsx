@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clsx } from "clsx";
 import {
   ShoppingBag,
@@ -41,8 +41,34 @@ export function Navbar({ user }: NavbarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  // Unread notification count — fetched on mount when the user is logged in
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const navLinks = user?.role === "admin" ? adminLinks : studentLinks;
+
+  // Unread notification count — fetched on mount and polled every 60 s.
+  // The async function is defined inside the effect so setState is called
+  // only from within the async callback, satisfying react-hooks/set-state-in-effect.
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchUnreadCount() {
+      try {
+        const res = await fetch("/api/notifications?limit=1", { credentials: "include" });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.success) setUnreadCount(json.data.unreadCount ?? 0);
+      } catch {
+        // Non-critical: silently ignore network errors in the nav badge
+      }
+    }
+
+    // Fetch immediately on mount / when user changes
+    fetchUnreadCount();
+    // Poll every 60 s so the badge stays fresh without WebSockets
+    const interval = setInterval(fetchUnreadCount, 60_000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -98,12 +124,30 @@ export function Navbar({ user }: NavbarProps) {
                 </Link>
               )}
 
-              {/* Notifications placeholder */}
+              {/* Notifications bell — shows unread count badge */}
               <button
-                aria-label="Notifications"
+                aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+                onClick={async () => {
+                  // Mark all as read and reset badge when the bell is clicked
+                  if (unreadCount > 0) {
+                    setUnreadCount(0);
+                    await fetch("/api/notifications", {
+                      method: "PATCH",
+                      credentials: "include",
+                    });
+                  }
+                }}
                 className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* Profile dropdown */}

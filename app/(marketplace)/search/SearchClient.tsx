@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useCallback, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Search, SlidersHorizontal, X, Sparkles, Zap } from "lucide-react";
 import { ListingGrid } from "@/components/listing/ListingGrid";
 import { Pagination } from "@/components/ui/Pagination";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { extractFiltersFromQuery } from "@/lib/search/filters";
 import type { SearchResponse, Category } from "@/types";
 
 interface SearchClientProps {
@@ -324,8 +325,6 @@ function FilterBtn({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 function ExtractedHints({ query }: { query: string }) {
-  // Import at module level would create circular deps; import dynamically here
-  const { extractFiltersFromQuery } = require("@/lib/search/filters");
   const extracted = extractFiltersFromQuery(query);
 
   const hints: string[] = [];

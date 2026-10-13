@@ -53,24 +53,6 @@ const CATEGORIES = [
 // ---------------------------------------------------------------------------
 // Seed users
 // ---------------------------------------------------------------------------
-const COLLEGES = [
-  "IIT Bombay", "IIT Delhi", "NIT Trichy", "BITS Pilani",
-  "VIT Vellore", "Manipal Institute", "SRM Chennai", "Anna University",
-];
-const DEPARTMENTS = [
-  "Computer Science", "Mechanical Engineering", "Electronics",
-  "Civil Engineering", "Chemical Engineering", "Information Technology",
-  "Electrical Engineering", "Biotechnology",
-];
-const LOCATIONS = [
-  "Hostel Block A", "Hostel Block B", "Main Campus", "Library",
-  "Engineering Block", "Science Block", "Near Canteen", "Sports Complex",
-];
-
-function randomFrom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 const STUDENT_USERS = [
   { name: "Arjun Sharma",    email: "student@example.com",  college: "IIT Bombay",         dept: "Computer Science",     year: 3 },
   { name: "Priya Patel",     email: "priya@example.com",    college: "IIT Delhi",           dept: "Electronics",          year: 2 },
@@ -455,12 +437,12 @@ async function seed() {
     // ---- 4. Admin users ----
     console.log("  Seeding admin users...");
     const adminHash = hashSync("admin123", 10);
-    const { rows: admin1 } = await client.query(
+    await client.query(
       `INSERT INTO users (role_id, name, email, password_hash, college, department, year, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [roleIds.admin, "Admin User", "admin@example.com", adminHash, "StudentMart", "Administration", null, "active"]
     );
-    const { rows: admin2 } = await client.query(
+    await client.query(
       `INSERT INTO users (role_id, name, email, password_hash, college, department, year, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [roleIds.admin, "Suresh Admin", "admin2@example.com", adminHash, "StudentMart", "Moderation", null, "active"]
