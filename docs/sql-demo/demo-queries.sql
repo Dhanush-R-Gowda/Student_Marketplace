@@ -439,9 +439,10 @@ ALTER TABLE demo_listing_ratings
     ADD CONSTRAINT chk_rating_range CHECK (rating BETWEEN 1 AND 5);
 
 -- Verify: constraint is recorded in pg_constraint
-SELECT conname        AS constraint_name,
-       consrc         AS definition,   -- human-readable expression (pg < 16)
-       pg_get_constraintdef(oid) AS full_definition
+-- Note: pg_constraint.consrc was removed in PostgreSQL 16.
+--       pg_get_constraintdef(oid) is the correct cross-version approach.
+SELECT conname                        AS constraint_name,
+       pg_get_constraintdef(oid)      AS definition
 FROM   pg_constraint
 WHERE  conrelid = 'demo_listing_ratings'::regclass
   AND  contype  = 'c';                 -- 'c' = CHECK constraint
