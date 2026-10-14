@@ -342,3 +342,158 @@ FROM transactions
 WHERE transaction_status = 'Completed'
 GROUP BY DATE(completed_at)
 ORDER BY date;
+
+
+-- =============================================================================
+-- 18. DDL OPERATIONS — CREATE, ALTER TABLE, DROP
+-- =============================================================================
+-- Demonstrates the three core DDL verbs required for DBMS Level 3:
+--
+--   CREATE TABLE  — defines a new relation with columns and a primary key
+--   ALTER TABLE   — modifies the structure of an existing table:
+--                     ADD COLUMN     — extends the schema non-destructively
+--                     ALTER COLUMN   — tightens a type or default
+--                     ADD CONSTRAINT — enforces a business rule post-creation
+--                     DROP COLUMN    — removes a column that is no longer needed
+--   DROP TABLE    — removes the table entirely (used here as cleanup)
+--
+-- A disposable table `demo_listing_ratings` is used so that no production
+-- application table is altered.  The table is logically meaningful — students
+-- could rate listings they purchased, which is a natural extension of the
+-- marketplace domain.
+--
+-- NOTE: No live database is available in this environment.
+--       These statements have been verified for correct PostgreSQL syntax
+--       but were NOT executed against a running instance.
+--       Mark: UNVERIFIED (syntax-checked only)
+-- =============================================================================
+
+
+-- ---------------------------------------------------------------------------
+-- Step 1: CREATE — establish the base table
+-- Purpose : gives ALTER TABLE something meaningful to operate on.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS demo_listing_ratings (
+    id          SERIAL       PRIMARY KEY,
+    listing_id  UUID         NOT NULL,   -- FK-like reference (no FK yet)
+    buyer_id    UUID         NOT NULL,
+    rating      INTEGER      NOT NULL,   -- intentionally no CHECK here; added via ALTER below
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Verify: table exists with the expected columns
+SELECT column_name, data_type, is_nullable, column_default
+FROM   information_schema.columns
+WHERE  table_name = 'demo_listing_ratings'
+ORDER  BY ordinal_position;
+
+
+-- ---------------------------------------------------------------------------
+-- Step 2: ALTER TABLE — ADD COLUMN
+-- Purpose : add a free-text review body after the table already exists,
+--           simulating an incremental schema change in a live system.
+-- Syntax  : ALTER TABLE <table> ADD COLUMN <name> <type> [constraint];
+-- Effect  : PostgreSQL adds the column to every existing row with NULL
+--           (or the specified DEFAULT) without rewriting the table for
+--           nullable columns — the change is near-instant.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_listing_ratings
+    ADD COLUMN review_text TEXT;                        -- nullable; optional review
+
+-- Verify: new column appears
+SELECT column_name, data_type, is_nullable
+FROM   information_schema.columns
+WHERE  table_name   = 'demo_listing_ratings'
+  AND  column_name  = 'review_text';
+
+
+-- ---------------------------------------------------------------------------
+-- Step 3: ALTER TABLE — ALTER COLUMN (set a DEFAULT)
+-- Purpose : make review_text default to an empty string rather than NULL,
+--           so application code can always expect a defined value.
+-- Syntax  : ALTER TABLE <table> ALTER COLUMN <name> SET DEFAULT <expr>;
+-- Effect  : future INSERTs that omit review_text receive '' instead of NULL.
+--           Existing rows are NOT updated; this is a metadata-only change.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_listing_ratings
+    ALTER COLUMN review_text SET DEFAULT '';
+
+-- Verify: default is now recorded
+SELECT column_name, column_default
+FROM   information_schema.columns
+WHERE  table_name  = 'demo_listing_ratings'
+  AND  column_name = 'review_text';
+
+
+-- ---------------------------------------------------------------------------
+-- Step 4: ALTER TABLE — ADD CONSTRAINT
+-- Purpose : enforce the business rule that ratings must be between 1 and 5.
+--           Added post-creation to demonstrate that constraints can be
+--           imposed on an existing table (after validating existing data).
+-- Syntax  : ALTER TABLE <table> ADD CONSTRAINT <name> CHECK (<expr>);
+-- Effect  : PostgreSQL validates all existing rows against the predicate
+--           before accepting the constraint.  If any row violates it, the
+--           ALTER fails and the table is unchanged (atomic DDL).
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_listing_ratings
+    ADD CONSTRAINT chk_rating_range CHECK (rating BETWEEN 1 AND 5);
+
+-- Verify: constraint is recorded in pg_constraint
+-- Note: pg_constraint.consrc was removed in PostgreSQL 16.
+--       pg_get_constraintdef(oid) is the correct cross-version approach.
+SELECT conname                        AS constraint_name,
+       pg_get_constraintdef(oid)      AS definition
+FROM   pg_constraint
+WHERE  conrelid = 'demo_listing_ratings'::regclass
+  AND  contype  = 'c';                 -- 'c' = CHECK constraint
+
+
+-- ---------------------------------------------------------------------------
+-- Step 5: ALTER TABLE — ADD CONSTRAINT UNIQUE (multi-column)
+-- Purpose : a buyer should rate any given listing at most once.
+--           Demonstrates a UNIQUE constraint added after the fact.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_listing_ratings
+    ADD CONSTRAINT uq_one_rating_per_buyer_listing
+        UNIQUE (listing_id, buyer_id);
+
+-- Verify: unique constraint appears
+SELECT conname, contype
+FROM   pg_constraint
+WHERE  conrelid = 'demo_listing_ratings'::regclass;
+
+
+-- ---------------------------------------------------------------------------
+-- Step 6: ALTER TABLE — DROP COLUMN
+-- Purpose : remove a column that is no longer needed (or was added by
+--           mistake), demonstrating non-destructive schema rollback.
+-- Syntax  : ALTER TABLE <table> DROP COLUMN [IF EXISTS] <name> [CASCADE];
+-- Effect  : column is removed from all future queries and from storage on
+--           the next VACUUM FULL.  CASCADE is needed if other objects
+--           (views, indexes) depend on the column.
+-- ---------------------------------------------------------------------------
+ALTER TABLE demo_listing_ratings
+    DROP COLUMN IF EXISTS review_text;
+
+-- Verify: column is gone
+SELECT column_name
+FROM   information_schema.columns
+WHERE  table_name = 'demo_listing_ratings'
+ORDER  BY ordinal_position;
+
+
+-- ---------------------------------------------------------------------------
+-- Step 7: Cleanup — DROP TABLE
+-- Purpose : remove the demo table so this block can be re-run safely and
+--           the production schema stays clean.
+-- Syntax  : DROP TABLE [IF EXISTS] <table> [CASCADE];
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS demo_listing_ratings;
+
+-- Verify: table no longer exists
+SELECT EXISTS (
+    SELECT 1
+    FROM   information_schema.tables
+    WHERE  table_schema = 'public'
+      AND  table_name   = 'demo_listing_ratings'
+) AS table_still_exists;   -- expected: false

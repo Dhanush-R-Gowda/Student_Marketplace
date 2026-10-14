@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth();
     const { searchParams } = new URL(request.url);
-    const role      = searchParams.get("role") ?? "buyer";
     const listingId = searchParams.get("listingId");
 
     if (listingId) {

@@ -1,6 +1,5 @@
-import pool, { query, queryOne, withTransaction } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
 import type { Listing, ListingImage, CreateListingInput, UpdateListingInput } from "@/types";
-import type { PoolClient } from "pg";
 
 // ---------------------------------------------------------------------------
 // Listing queries
@@ -150,6 +149,29 @@ export async function adminRemoveListing(listingId: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Admin update a listing by its ID alone — no seller_id guard.
+ *
+ * Admins are permitted to change only the listing status (e.g. Available →
+ * Removed, Reserved → Available).  They must not overwrite seller-owned
+ * content fields (title, description, price, condition, location,
+ * category_id) because those represent the seller's own listing data.
+ *
+ * Returns the updated listing, or null when the listing does not exist.
+ */
+export async function adminUpdateListing(
+  listingId: string,
+  data: { status: string }
+): Promise<Listing | null> {
+  const rows = await query<Listing>(`
+    UPDATE listings
+    SET status = $1
+    WHERE id = $2
+    RETURNING *
+  `, [data.status, listingId]);
+  return rows[0] ?? null;
+}
+
 /** Update the embedding vector for a listing */
 export async function updateListingEmbedding(
   listingId: string,
@@ -160,6 +182,76 @@ export async function updateListingEmbedding(
     SET embedding = $1::vector
     WHERE id = $2
   `, [`[${embedding.join(",")}]`, listingId]);
+}
+
+// Valid status values — mirrors the CHECK constraint in 001_schema.sql and
+// LISTING_STATUSES in lib/validation/schemas.ts.
+const VALID_LISTING_STATUSES = ["Available", "Reserved", "Sold", "Removed"] as const;
+type AdminListingStatus = typeof VALID_LISTING_STATUSES[number];
+
+/**
+ * Admin paginated listing query.
+ *
+ * Security:
+ *   - `status` is validated against an explicit allowlist before it enters any
+ *     query.  An unrecognised value is treated as "all" (no filter), so no
+ *     user-controlled string is ever interpolated into SQL text.
+ *   - `page` and `limit` are integers computed by the caller with Math.max /
+ *     Math.min — they are safe numeric literals and remain as interpolation,
+ *     consistent with every other paginated query in this module.
+ *   - The `status` value, when present, is passed as a $1 parameter.
+ */
+export async function getAdminListings(params: {
+  status?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ listings: Listing[]; total: number }> {
+  const { page = 1, limit = 20 } = params;
+  const offset = (page - 1) * limit;
+
+  // Validate status against the known-good allowlist.
+  // An unrecognised value (including "all") means no filter.
+  const validStatus: AdminListingStatus | null =
+    VALID_LISTING_STATUSES.includes(params.status as AdminListingStatus)
+      ? (params.status as AdminListingStatus)
+      : null;
+
+  // Build the parameterized WHERE clause.
+  // Only the status value ever becomes a query parameter — identifiers
+  // (column names, table names) never come from user input.
+  const whereClause = validStatus ? "WHERE l.status = $1" : "";
+  const queryParams: unknown[] = validStatus ? [validStatus] : [];
+
+  // Pagination indices depend on whether $1 is already taken by status.
+  const limitIdx  = validStatus ? 2 : 1;
+  const offsetIdx = validStatus ? 3 : 2;
+
+  const countRows = await query<{ total: string }>(
+    `SELECT COUNT(*) AS total
+     FROM listings l
+     INNER JOIN users      u ON l.seller_id   = u.id
+     INNER JOIN categories c ON l.category_id = c.id
+     ${whereClause}`,
+    queryParams
+  );
+  const total = parseInt(countRows[0]?.total ?? "0");
+
+  const listings = await query<Listing>(
+    `SELECT l.id, l.seller_id, l.title, l.price, l.condition, l.location, l.status,
+            l.created_at, u.name AS seller_name, c.name AS category_name,
+            (SELECT image_url FROM listing_images li
+             WHERE li.listing_id = l.id
+             ORDER BY li.display_order ASC LIMIT 1) AS primary_image
+     FROM listings l
+     INNER JOIN users      u ON l.seller_id   = u.id
+     INNER JOIN categories c ON l.category_id = c.id
+     ${whereClause}
+     ORDER BY l.created_at DESC
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    [...queryParams, limit, offset]
+  );
+
+  return { listings, total };
 }
 
 /** Get searchable text for a listing (used when generating embeddings) */

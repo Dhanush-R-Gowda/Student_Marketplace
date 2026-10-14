@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeftRight, ShoppingBag, Tag, Package, Clock } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { format } from "date-fns";
 import type { Transaction } from "@/types";
@@ -89,7 +88,6 @@ export function TransactionsClient({ transactions, userId }: TransactionsClientP
         <div className="space-y-4">
           {filtered.map(tx => {
             const isBuyer  = tx.buyer_id  === userId;
-            const isSeller = tx.seller_id === userId;
             const otherParty = isBuyer ? tx.seller_name : tx.buyer_name;
 
             return (

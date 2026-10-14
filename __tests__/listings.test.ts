@@ -51,7 +51,7 @@ describe("CreateListingSchema", () => {
   });
 
   it("rejects missing required fields", () => {
-    const { title, ...withoutTitle } = valid;
+    const { title: _title, ...withoutTitle } = valid;
     expect(CreateListingSchema.safeParse(withoutTitle).success).toBe(false);
   });
 

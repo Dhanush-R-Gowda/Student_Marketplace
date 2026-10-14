@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth/session";
 import { getOffersByBuyer } from "@/lib/db/queries/offers";
-import { getListingsBySeller } from "@/lib/db/queries/listings";
 import { query } from "@/lib/db";
 import { OffersClient } from "./OffersClient";
 import type { Offer } from "@/types";

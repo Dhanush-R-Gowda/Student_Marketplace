@@ -5,6 +5,7 @@ import {
   getListingById,
   getListingImages,
   updateListing,
+  adminUpdateListing,
   removeListing,
 } from "@/lib/db/queries/listings";
 
@@ -41,7 +42,15 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
 // ---------------------------------------------------------------------------
 // PUT /api/listings/[id]
-// Update a listing. Only the seller can edit their own listing.
+// Update a listing.
+//
+// Seller path  — only the listing's own seller may edit all fields.
+//                updateListing() enforces "WHERE id = $1 AND seller_id = $2".
+//
+// Admin path   — an admin may change listing status only (not seller-owned
+//                content fields).  adminUpdateListing() uses "WHERE id = $1"
+//                with no seller constraint so the admin's session.id does not
+//                incorrectly replace the seller_id guard and match zero rows.
 // ---------------------------------------------------------------------------
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   try {
@@ -61,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    // Check listing exists
+    // Check listing exists before authorisation so 404 beats 403.
     const existing = await getListingById(id);
     if (!existing) {
       return NextResponse.json(
@@ -70,7 +79,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    // Authorization: only seller or admin can edit
+    // Authorization: only seller or admin can edit.
     if (existing.seller_id !== session.id && session.role !== "admin") {
       return NextResponse.json(
         { success: false, error: "You are not allowed to edit this listing." },
@@ -78,15 +87,50 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    // Sold listings cannot be re-edited (status change only allowed if admin)
-    if (existing.status === "Sold" && session.role !== "admin") {
+    // ── Admin path ────────────────────────────────────────────────────────
+    // Admins may only change status (they must not overwrite seller content).
+    if (session.role === "admin") {
+      const { status } = parsed.data;
+      if (!status) {
+        return NextResponse.json(
+          { success: false, error: "Admins may only update listing status." },
+          { status: 422 }
+        );
+      }
+      // adminUpdateListing targets listing by its own ID — no seller_id in WHERE.
+      const updated = await adminUpdateListing(id, { status });
+      if (!updated) {
+        return NextResponse.json(
+          { success: false, error: "Listing not found." },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        data: updated,
+        message: "Listing updated.",
+      });
+    }
+
+    // ── Seller path ───────────────────────────────────────────────────────
+    // Sold listings cannot be re-edited by the seller.
+    if (existing.status === "Sold") {
       return NextResponse.json(
         { success: false, error: "Sold listings cannot be edited." },
         { status: 409 }
       );
     }
 
+    // updateListing enforces "WHERE id = $1 AND seller_id = $2".
     const updated = await updateListing(id, session.id, parsed.data);
+    if (!updated) {
+      // Should not happen (we already confirmed existence and ownership above),
+      // but guard against any race condition.
+      return NextResponse.json(
+        { success: false, error: "Listing not found or no longer owned by you." },
+        { status: 404 }
+      );
+    }
     return NextResponse.json({
       success: true,
       data: updated,

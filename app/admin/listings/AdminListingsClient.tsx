@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, Package } from "lucide-react";
-import { StatusBadge, ConditionBadge } from "@/components/ui/Badge";
+import { StatusBadge } from "@/components/ui/Badge";
 import { formatDistanceToNow } from "date-fns";
 import type { Listing } from "@/types";
 

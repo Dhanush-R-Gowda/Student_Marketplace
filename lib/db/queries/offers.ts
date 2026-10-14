@@ -1,4 +1,4 @@
-import { query, queryOne, withTransaction } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
 import type { Offer } from "@/types";
 
 // ---------------------------------------------------------------------------

@@ -80,7 +80,7 @@ Single monolith. No microservices. One database. Understandable and demonstrable
 
 - **12 tables** in 3NF
 - **22 indexes** (B-tree, GIN for FTS, IVFFlat for vectors)
-- **4 views** (available_listings, all_listings, marketplace_statistics, seller_summary, category_stats)
+- **5 views** (`available_listings_view`, `all_listings_view`, `marketplace_statistics_view`, `seller_listing_summary_view`, `category_stats_view`)
 - **7 triggers** (auto-timestamps, prevent invalid offers, status history, FTS maintenance, auto-wishlist)
 - **1 stored function** (`accept_offer()` — centerpiece transaction demonstration)
 
@@ -100,54 +100,88 @@ See [`docs/er-diagram.md`](docs/er-diagram.md) for the ER diagram.
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url>
-cd student-marketplace
-npm install
+git clone https://github.com/thrupthi912/DBMS_Project.git
+cd DBMS_Project
 ```
+
+Install dependencies using the lockfile exactly (requires npm 7+):
+
+```bash
+npm ci
+```
+
+> `npm ci` installs from `package-lock.json` without altering it. Use `npm install`
+> only if you intentionally want to update resolved versions.
 
 ### 2. Configure environment
 
 ```bash
+# macOS / Linux
 cp .env.example .env.local
+
+# Windows (PowerShell)
+Copy-Item .env.example .env.local
 ```
 
-Edit `.env.local`:
+Edit `.env.local` and fill in your values. The file already contains comments
+explaining each variable. At minimum you must set:
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/student_marketplace
-AUTH_SECRET=your_random_32_char_secret_here
-OPENAI_API_KEY=sk-...     # optional — semantic search only
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/student_marketplace
+AUTH_SECRET=<generate a random 32+ character string>
+```
+
+`OPENAI_API_KEY` is optional — the app falls back to keyword-only search when it
+is absent. `NEXT_PUBLIC_APP_URL` defaults to `http://localhost:3000`.
+
+Generate a secure `AUTH_SECRET`:
+
+```bash
+# Node.js (any platform)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# OpenSSL
+openssl rand -hex 32
 ```
 
 ### 3. Set up PostgreSQL
 
 ```bash
-# Create database
+# Create the database
 createdb student_marketplace
+```
 
-# Install pgvector (if not already installed)
-# macOS: brew install pgvector
-# Ubuntu: sudo apt install postgresql-15-pgvector
+Install the pgvector extension if it is not already present:
+
+```bash
+# macOS (Homebrew)
+brew install pgvector
+
+# Ubuntu / Debian
+sudo apt install postgresql-15-pgvector   # adjust version number as needed
+
+# Windows
+# See: https://github.com/pgvector/pgvector#windows
+# Pre-built binaries are available at the link above for PostgreSQL 14–17.
 ```
 
 ### 4. Run migrations
 
 ```bash
-npx tsx database/migrate.ts
+npm run db:migrate
 ```
 
 This runs all migrations in order:
 - `001_schema.sql` — tables, constraints, CHECK constraints
 - `002_indexes.sql` — all indexes including GIN and IVFFlat
-- `003_views.sql` — 4 database views
+- `003_views.sql` — 5 database views
 - `004_triggers.sql` — 7 triggers
 - `005_functions.sql` — `accept_offer()` stored function
 
 ### 5. Seed demo data
 
 ```bash
-npx tsx database/seed/seed.ts
+npm run db:seed
 ```
 
 Creates:
@@ -198,6 +232,8 @@ Open [http://localhost:3000](http://localhost:3000)
 | POST | `/api/offers` | Create offer |
 | PATCH | `/api/offers/[id]` | Accept/Reject/Withdraw offer |
 | GET | `/api/transactions` | Transaction history |
+| GET | `/api/notifications` | Get notifications (paginated + unread count) |
+| PATCH | `/api/notifications` | Mark all notifications as read |
 | POST | `/api/reports` | Report a listing |
 | POST | `/api/upload` | Upload listing image |
 | GET | `/api/admin/analytics` | Admin analytics |
@@ -236,7 +272,7 @@ final_score = 0.55 × semantic_score
 | GROUP BY + HAVING | Analytics queries |
 | Aggregate functions | COUNT, AVG, SUM, MIN, MAX in views + analytics |
 | Subqueries | "listings with pending offers", correlated subqueries |
-| Views | `available_listings_view`, `marketplace_statistics_view`, etc. |
+| Views | `available_listings_view`, `all_listings_view`, `marketplace_statistics_view`, `seller_listing_summary_view`, `category_stats_view` |
 | Indexes | 22 indexes: B-tree, GIN (FTS), IVFFlat (vectors) |
 | Transactions | `accept_offer()` — BEGIN/FOR UPDATE/COMMIT/ROLLBACK |
 | Triggers | T1–T7: timestamps, offer prevention, status history, FTS maintenance |
@@ -253,13 +289,15 @@ npm run test          # run all tests once
 npm run test:watch    # watch mode
 ```
 
-85 tests across:
-- Validation schemas
-- JWT session logic
-- Listing business rules
-- Search filter extraction
-- Ranking formula and weights
-- Offer/transaction workflow
+152 tests across 8 test files:
+- `auth.test.ts` — JWT session logic and auth validation schemas
+- `listings.test.ts` — listing validation and business rules
+- `offers-transactions.test.ts` — offer/transaction workflow
+- `validation.test.ts` — Zod schema smoke tests
+- `search.test.ts` — filter extraction, ranking formula and weights
+- `admin-listing-update.test.ts` — admin update bug regression tests
+- `admin-listings-query.test.ts` — parameterized admin status query safety
+- `notifications.test.ts` — notification isolation, auth and pagination
 
 ---
 
@@ -289,7 +327,7 @@ docs/
 ├── database-design.md     Full DB design documentation
 ├── search-architecture.md Search system architecture
 └── sql-demo/
-    └── demo-queries.sql   17 SQL demonstration queries
+    └── demo-queries.sql   18 SQL demonstration queries (sections 1–18)
 ```
 
 ---

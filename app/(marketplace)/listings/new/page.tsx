@@ -8,9 +8,9 @@ export const metadata: Metadata = { title: "Create Listing" };
 export const dynamic = "force-dynamic";
 
 export default async function NewListingPage() {
-  let session;
+  let _session;
   try {
-    session = await requireAuth();
+    _session = await requireAuth();
   } catch {
     redirect("/login?redirect=/listings/new");
   }

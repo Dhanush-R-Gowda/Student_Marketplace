@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Shield, ShieldOff, User } from "lucide-react";
+import { Search, Shield, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
 import type { User as UserType } from "@/types";
 
@@ -18,7 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   deactivated: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
 };
 
-export function AdminUsersClient({ users: initial, total, currentFilters }: Props) {
+export function AdminUsersClient({ users: initial, total: _total, currentFilters }: Props) {
   const router = useRouter();
   const [users, setUsers] = useState(initial);
   const [search, setSearch] = useState(currentFilters.search ?? "");

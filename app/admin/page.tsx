@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
-  Users, Package, ArrowLeftRight, Flag, TrendingUp,
-  ShoppingBag, AlertTriangle, CheckCircle, Clock
+  Users, ArrowLeftRight, Flag,
+  ShoppingBag, CheckCircle, Clock
 } from "lucide-react";
 import { requireAdmin } from "@/lib/auth/session";
 import { getMarketplaceStats } from "@/lib/db/queries/analytics";
